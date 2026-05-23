@@ -85,7 +85,7 @@ class ArcherClientTests(unittest.TestCase):
         client._password = None
 
         with self.assertRaisesRegex(
-            ArcherProtocolError, "Password has already been cleared after previous login"
+            ArcherProtocolError, "No password available for authentication"
         ):
             client.login()
 

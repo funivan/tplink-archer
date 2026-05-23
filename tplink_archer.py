@@ -56,7 +56,7 @@ class ArcherClient:
 
     def login(self):
         if self._password is None:
-            raise ArcherProtocolError("Password has already been cleared after previous login")
+            raise ArcherProtocolError("No password available for authentication")
         encoded_password = base64.b64encode(self._password.encode("utf-8")).decode("ascii")
         payload = {
             "operation": "login",

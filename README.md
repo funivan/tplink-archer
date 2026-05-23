@@ -13,6 +13,7 @@ The command logs in to the router web API and prints JSON from:
 `/cgi-bin/luci/;stok=<token>/admin/status?form=all`
 
 You can pass the password via `--password`, `TPLINK_ARCHER_PASSWORD`, or interactive prompt.
+After a successful login the client clears the in-memory password; create a new client instance if you need to re-authenticate later.
 
 ## Security note
 
