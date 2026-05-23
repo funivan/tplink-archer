@@ -21,7 +21,9 @@ class _Response:
 
 class _Opener:
     def __init__(self, responses):
-        self.responses = [_Response(json.dumps(item)) for item in responses]
+        self.responses = [
+            _Response(item if isinstance(item, str) else json.dumps(item)) for item in responses
+        ]
         self.requests = []
 
     def open(self, request, timeout):
@@ -71,6 +73,39 @@ class ArcherClientTests(unittest.TestCase):
 
         with self.assertRaises(ArcherProtocolError):
             client.login()
+
+    def test_request_json_raises_error_for_invalid_json(self):
+        opener = _Opener(["not-json"])
+        client = ArcherClient(
+            host="192.168.0.1",
+            username="admin",
+            password="secret",
+            opener=opener,
+        )
+
+        with self.assertRaises(ArcherProtocolError):
+            client._request_json("GET", "/status")
+
+    def test_extract_stok_from_nested_list(self):
+        payload = {"data": [{"x": 1}, {"nested": [{"stok": "list-token"}]}]}
+        self.assertEqual("list-token", ArcherClient._extract_stok(payload))
+
+    def test_read_data_uses_existing_stok(self):
+        opener = _Opener([{"network": {"up": True}}])
+        client = ArcherClient(
+            host="192.168.0.1",
+            username="admin",
+            password="secret",
+            opener=opener,
+        )
+        client._stok = "existing-token"
+
+        payload = client.read_data()
+
+        self.assertEqual({"network": {"up": True}}, payload)
+        self.assertEqual(1, len(opener.requests))
+        status_request, _ = opener.requests[0]
+        self.assertIn(";stok=existing-token/admin/status?form=all", status_request.full_url)
 
 
 if __name__ == "__main__":
