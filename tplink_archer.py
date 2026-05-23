@@ -1,6 +1,8 @@
 import argparse
 import base64
+import getpass
 import json
+import os
 import urllib.parse
 import urllib.request
 
@@ -54,7 +56,7 @@ class ArcherClient:
 
     def login(self):
         if self._password is None:
-            raise ArcherProtocolError("Password is not available for login")
+            raise ArcherProtocolError("Password has already been cleared after previous login")
         encoded_password = base64.b64encode(self._password.encode("utf-8")).decode("ascii")
         payload = {
             "operation": "login",
@@ -81,7 +83,7 @@ def _build_argument_parser():
     parser = argparse.ArgumentParser(description="Read TP-Link Archer router data.")
     parser.add_argument("--host", required=True, help="Router host, for example 192.168.0.1")
     parser.add_argument("--username", default="admin", help="Router username")
-    parser.add_argument("--password", required=True, help="Router password")
+    parser.add_argument("--password", help="Router password")
     parser.add_argument("--timeout", type=int, default=10, help="Request timeout in seconds")
     parser.add_argument("--https", action="store_true", help="Use HTTPS instead of HTTP")
     parser.add_argument("--form", default="all", help="Status form to read")
@@ -90,10 +92,15 @@ def _build_argument_parser():
 
 def main():
     args = _build_argument_parser().parse_args()
+    password = args.password or os.getenv("TPLINK_ARCHER_PASSWORD")
+    if password is None:
+        password = getpass.getpass("Router password: ")
+    if not password:
+        raise ArcherProtocolError("No password provided for authentication")
     client = ArcherClient(
         host=args.host,
         username=args.username,
-        password=args.password,
+        password=password,
         timeout=args.timeout,
         use_https=args.https,
     )

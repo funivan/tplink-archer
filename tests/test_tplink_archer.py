@@ -74,6 +74,21 @@ class ArcherClientTests(unittest.TestCase):
         with self.assertRaises(ArcherProtocolError):
             client.login()
 
+    def test_login_fails_when_password_was_cleared(self):
+        opener = _Opener([])
+        client = ArcherClient(
+            host="192.168.0.1",
+            username="admin",
+            password="secret",
+            opener=opener,
+        )
+        client._password = None
+
+        with self.assertRaisesRegex(
+            ArcherProtocolError, "Password has already been cleared after previous login"
+        ):
+            client.login()
+
     def test_request_json_raises_error_for_invalid_json(self):
         opener = _Opener(["not-json"])
         client = ArcherClient(
