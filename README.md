@@ -1,55 +1,48 @@
-# TP-Link Router Scrape
+# TP-Link Router Info
 
-Playwright script that logs into a TP-Link router's web UI, opens the Advanced section, and dumps RSSI / signal / status details to the console.
+Playwright script that logs into a TP-Link router's web UI, opens the Advanced section, and dumps RSSI / signal / cellular status details to stdout as JSON.
 
 ## Prerequisites
 
 - Node.js 18+
-- [Yarn](https://classic.yarnpkg.com/lang/en/docs/install/) (Classic or Berry both work)
+- Yarn or npm
 - Network access to the router's web UI
 
 ## Setup
 
-1. Install dependencies (this also installs the Chromium browser via Playwright's `postinstall`):
+1. Install dependencies and the Chromium browser:
 
    ```sh
-   yarn install
+   ./scripts/install.sh
    ```
 
-   If Chromium did not install automatically, run:
+   This runs `yarn install` (or `npm install`) and `playwright install chromium`.
 
-   ```sh
-   yarn playwright install chromium
-   ```
-
-2. Create a `.env` file from the example and fill in your router credentials:
+2. Create a `.env` file and fill in your router credentials:
 
    ```sh
    cp .env.example .env
    ```
 
-   Edit `.env`:
-
-   ```
-   ROUTER_IP=192.168.1.1
-   ROUTER_USERNAME=admin
-   ROUTER_PASSWORD=your_password_here
-   ```
-
-   Optional variables:
-   - `ROUTER_URL` — full URL override (e.g. `https://192.168.4.1`). Defaults to `https://192.168.1.1`.
-   - `ROUTER_USER` — username override. Defaults to `admin`.
+   Variables:
+   - `ROUTER_URL` — full URL of the router (e.g. `https://192.168.4.1`).
+   - `ROUTER_PASSWORD` — required.
+   - `ROUTER_USER` — username, defaults to `admin`.
    - `HEADLESS` — set to `false` to watch the browser run. Defaults to headless.
+   - `LOG_LEVEL` — `error` | `warn` | `info` | `debug` | `trace`. Defaults to `info`.
 
 ## Run
 
 ```sh
 yarn start
+# or
+node scrape.js
 ```
 
-The script will log in, navigate to the Advanced section, and print RSSI / signal / status information to stdout.
+The script logs in, navigates to Advanced, and prints a JSON object of signal fields (RSRP, RSRQ, SINR, RSSI, band, PCI, etc.) to stdout. Logs go to stderr.
 
 ## Notes
 
 - TP-Link UIs vary by model and firmware. The script tries common selectors and falls back to scraping any text containing `RSSI`, `Signal`, etc.
 - Self-signed HTTPS certificates are accepted automatically.
+- A "force log in" prompt (another session active) is handled automatically.

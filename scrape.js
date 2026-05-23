@@ -12,7 +12,7 @@
 //     and falls back to scraping any text containing "RSSI"/"Signal"/etc.
 //   - Self-signed HTTPS is accepted via ignoreHTTPSErrors.
 
-require('dotenv').config();
+require('dotenv').config({ override: true, quiet: true });
 const { chromium } = require('playwright');
 
 const ROUTER_URL = process.env.ROUTER_URL;
@@ -314,120 +314,6 @@ async function collectByRow(page) {
     rows.push(...frameRows);
   }
   return rows;
-}
-
-async function collectDetails(page) {
-  // Try to find a Status / Wireless / System info subsection under Advanced.
-  for (const label of ['Status', 'Wireless', 'System', 'Network', 'Operation Mode']) {
-    const loc = page.locator(`a:has-text("${label}"), li:has-text("${label}")`).first();
-    if (await loc.count()) {
-      try { await loc.click({ timeout: 1500 }); } catch {}
-      await page.waitForTimeout(500);
-    }
-  }
-
-  // Walk every frame and extract label/value pairs + any line mentioning
-  // signal-related keywords.
-  const KEYWORDS = /(rssi|signal|noise|snr|channel|ssid|mac|ip address|uptime|firmware|model|mode|tx rate|rx rate|link speed|band|security|antenna|tx power|chain|mcs|bandwidth|distance|polarization|gain|cinr)/i;
-
-  const details = {};
-  for (const frame of page.frames()) {
-    let extracted;
-    try {
-      extracted = await frame.evaluate((kwSrc) => {
-        const re = new RegExp(kwSrc, 'i');
-        const out = {};
-
-        // 1. Table rows: <th>/<td> or two <td> cells.
-        document.querySelectorAll('tr').forEach((tr) => {
-          const cells = tr.querySelectorAll('th, td');
-          if (cells.length >= 2) {
-            const k = cells[0].innerText.trim().replace(/[:：]\s*$/, '');
-            const v = Array.from(cells).slice(1).map(c => c.innerText.trim()).join(' ').trim();
-            if (k && v && k.length < 80) out[k] = v;
-          }
-        });
-
-        // 2. Definition lists.
-        document.querySelectorAll('dl').forEach((dl) => {
-          const dts = dl.querySelectorAll('dt');
-          const dds = dl.querySelectorAll('dd');
-          for (let i = 0; i < Math.min(dts.length, dds.length); i++) {
-            const k = dts[i].innerText.trim();
-            const v = dds[i].innerText.trim();
-            if (k && v) out[k] = v;
-          }
-        });
-
-        // 3. Geometric label/value pairing: find leaf elements with trailing ":"
-        //    and pair each with the nearest visible text element on the same row
-        //    (vertical overlap) to the right.
-        const leaves = [];
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, {
-          acceptNode: (el) => {
-            if (!el.offsetParent && el.tagName !== 'BODY') return NodeFilter.FILTER_SKIP;
-            if (el.children.length) return NodeFilter.FILTER_SKIP;
-            const t = (el.innerText || el.textContent || '').trim();
-            return t ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-          },
-        });
-        let n;
-        while ((n = walker.nextNode())) leaves.push(n);
-
-        const info = leaves.map((el) => {
-          const r = el.getBoundingClientRect();
-          return { el, text: (el.innerText || el.textContent || '').trim(), r };
-        }).filter(x => x.r.width > 0 && x.r.height > 0);
-
-        for (const lab of info) {
-          const m = lab.text.match(/^(.+?)\s*[:：]\s*$/);
-          if (!m) continue;
-          const key = m[1].trim();
-          if (!key || key.length > 80) continue;
-
-          // Prefer same-row to-the-right, then fall back to directly-below.
-          let best = null, bestDx = Infinity;
-          for (const cand of info) {
-            if (cand === lab) continue;
-            if (/[:：]\s*$/.test(cand.text)) continue;
-            const vOverlap = Math.min(lab.r.bottom, cand.r.bottom) - Math.max(lab.r.top, cand.r.top);
-            if (vOverlap < Math.min(lab.r.height, cand.r.height) * 0.5) continue;
-            const dx = cand.r.left - lab.r.right;
-            if (dx < -5) continue;
-            if (dx < bestDx) { bestDx = dx; best = cand; }
-          }
-          if (!best) {
-            // Below the label, horizontally aligned (left edges within 40px).
-            let bestDy = Infinity;
-            for (const cand of info) {
-              if (cand === lab) continue;
-              if (/[:：]\s*$/.test(cand.text)) continue;
-              const dx = Math.abs(cand.r.left - lab.r.left);
-              if (dx > 40) continue;
-              const dy = cand.r.top - lab.r.bottom;
-              if (dy < -2 || dy > 60) continue;
-              if (dy < bestDy) { bestDy = dy; best = cand; }
-            }
-          }
-          if (best && !(key in out)) out[key] = best.text;
-        }
-
-        // 4. Any visible line containing a signal-related keyword (fallback).
-        const lines = (document.body.innerText || '').split('\n')
-          .map(s => s.trim()).filter(Boolean).filter(s => re.test(s));
-        if (lines.length) out.__matched_lines = lines;
-
-        return out;
-      }, KEYWORDS.source);
-    } catch {
-      continue;
-    }
-    if (extracted && Object.keys(extracted).length) {
-      const tag = frame.name() || frame.url();
-      details[tag || 'main'] = extracted;
-    }
-  }
-  return details;
 }
 
 (async () => {

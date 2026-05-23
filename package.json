@@ -1,8 +1,8 @@
 {
-  "name": "tplink-router-scrape",
+  "name": "tplink-router-info",
   "private": true,
   "scripts": {
-    "start": "node router-scrape.js",
+    "start": "node scrape.js",
     "postinstall": "playwright install chromium"
   },
   "devDependencies": {
