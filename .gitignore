@@ -1,0 +1,5 @@
+.env
+.idea
+.tmp
+.playwright-mcp
+node_modules

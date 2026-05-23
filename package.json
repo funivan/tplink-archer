@@ -1,0 +1,14 @@
+{
+  "name": "tplink-router-scrape",
+  "private": true,
+  "scripts": {
+    "start": "node router-scrape.js",
+    "postinstall": "playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}
