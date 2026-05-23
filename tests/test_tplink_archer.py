@@ -26,7 +26,7 @@ class _Opener:
         ]
         self.requests = []
 
-    def open(self, request, timeout):
+    def open(self, request, timeout=None):
         self.requests.append((request, timeout))
         return self.responses.pop(0)
 

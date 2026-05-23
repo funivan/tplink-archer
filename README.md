@@ -11,3 +11,7 @@ python tplink_archer.py --host 192.168.0.1 --username admin --password "<passwor
 The command logs in to the router web API and prints JSON from:
 
 `/cgi-bin/luci/;stok=<token>/admin/status?form=all`
+
+## Security note
+
+TP-Link login payloads are base64-encoded by the router protocol, not encrypted. Prefer `--https` whenever the router firmware supports it.
