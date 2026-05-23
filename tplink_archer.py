@@ -13,7 +13,7 @@ class ArcherClient:
     def __init__(self, host, username, password, timeout=10, use_https=False, opener=None):
         self.host = host
         self.username = username
-        self.password = password
+        self._password = password
         self.timeout = timeout
         self.scheme = "https" if use_https else "http"
         self._stok = None
@@ -53,7 +53,9 @@ class ArcherClient:
         return None
 
     def login(self):
-        encoded_password = base64.b64encode(self.password.encode("utf-8")).decode("ascii")
+        if self._password is None:
+            raise ArcherProtocolError("Password is not available for login")
+        encoded_password = base64.b64encode(self._password.encode("utf-8")).decode("ascii")
         payload = {
             "operation": "login",
             "username": self.username,
@@ -64,12 +66,14 @@ class ArcherClient:
         if not token:
             raise ArcherProtocolError("Could not read session token from login response")
         self._stok = token
+        self._password = None
         return token
 
     def read_data(self, form="all"):
         if not self._stok:
             self.login()
-        path = f"/cgi-bin/luci/;stok={self._stok}/admin/status?form={form}"
+        encoded_form = urllib.parse.quote(str(form), safe="")
+        path = f"/cgi-bin/luci/;stok={self._stok}/admin/status?form={encoded_form}"
         return self._request_json("GET", path)
 
 

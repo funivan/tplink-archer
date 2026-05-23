@@ -107,6 +107,21 @@ class ArcherClientTests(unittest.TestCase):
         status_request, _ = opener.requests[0]
         self.assertIn(";stok=existing-token/admin/status?form=all", status_request.full_url)
 
+    def test_read_data_url_encodes_form(self):
+        opener = _Opener([{"network": {"up": True}}])
+        client = ArcherClient(
+            host="192.168.0.1",
+            username="admin",
+            password="secret",
+            opener=opener,
+        )
+        client._stok = "existing-token"
+
+        client.read_data(form="all/../../sensitive")
+
+        status_request, _ = opener.requests[0]
+        self.assertIn("form=all%2F..%2F..%2Fsensitive", status_request.full_url)
+
 
 if __name__ == "__main__":
     unittest.main()
